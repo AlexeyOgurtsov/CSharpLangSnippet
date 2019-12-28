@@ -7,6 +7,10 @@ static class LangApp
     {
         Console.WriteLine("Main");
 
+        ClassHierarchyTests.DoAllTests();
+
+        RegexTests.DoAllRegexTests();
+
         MyExceptionTests.DoAllTest();
 
         LinqTests.DoAllTests();

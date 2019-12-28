@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using System.Diagnostics.Contracts;
 using System.Text.RegularExpressions;
 public static class StringTest
@@ -15,6 +16,20 @@ public static class StringTest
         InternTest();
         PadAndTrimTest();
         CompareOrdinalTest();
+        ReplaceTest();
+        UnicodeOperationsTest();
+        CharArrayTest();
+    }
+
+    public static void CharArrayTest()
+    {
+        Console.WriteLine(System.Reflection.MethodBase.GetCurrentMethod().Name);
+        string InputString = "Name='Petrov'";
+        Match m = Regex.Match(InputString, @"'(?<Name>\w+)'", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+        Contract.Assert(m.Success);
+        Contract.Assert(m.Groups.TryGetValue("Name", out Group NameGroup));
+        char[] NameArray = InputString.ToCharArray(NameGroup.Index, NameGroup.Length);
+        Console.WriteLine($"NameArray={new string(NameArray)}");
     }
 
     public static void InternTest()
@@ -49,6 +64,14 @@ public static class StringTest
     public static void CompareOrdinalTest()
     {
         Console.WriteLine(System.Reflection.MethodBase.GetCurrentMethod().Name);
+    }
+
+    public static void ReplaceTest()
+    {
+        Console.WriteLine(System.Reflection.MethodBase.GetCurrentMethod().Name);
+
+        string WithSingleQuites = "Name=\"test\"".Replace('\"', '\'');
+        Contract.Assert(WithSingleQuites.Contains('\''));
     }
 
     public static void ConstructionTest()
@@ -125,7 +148,7 @@ public static class StringTest
 	const string CHAR_CLASS_DIGIT = @"\d";
 	const string CHAR_CLASS__NOT__DIGIT = @"\D";
 	const string CHAR_CLASS_ANY_GIVEN_CHARS = @"[abc]";
-	const string CHAR_CLASS_ALL_CHARS_EXCEPT_GIVEN = @"[^_$]";
+	const string CHAR_CLASS_ALL_CHARS_EXCEPT_GIVEN = @"[^ab]";
 	const string CHAR_CLASS_RANGE = @"[a-zA-Z]";
 
 	// Regex character classes
@@ -164,12 +187,21 @@ public static class StringTest
         {
             // @TODO: How to include System.Text.RegularExpressions?
 
-	    MatchCollection Matches = Regex.Matches(InputString, REGEX_NUMBER, RegexOptions.IgnorePatternWhitespace);
-	    Console.WriteLine($"Matches.Count={Matches.Count}");
-	    foreach(Match m in Matches)
-	    {
-		    // @TODO: Output groups
-	    }
+	        MatchCollection Matches = Regex.Matches(InputString, REGEX_NUMBER, RegexOptions.IgnorePatternWhitespace);
+	        Console.WriteLine($"Matches.Count={Matches.Count}");
+	        foreach(Match m in Matches)
+	        {
+                Console.WriteLine($"New match: Name={m.Name}; Value={m.Value}; Index={m.Index}; bSuccess={m.Success};");
+
+                // Output captures
+                Console.WriteLine($"Captures: {m.Captures.Count}");
+                foreach (Capture c in m.Captures)
+                {
+                    Console.WriteLine($"New capture: Value={c.Value}; Index={c.Index};");
+                }
+
+		        // @TODO: Output groups
+	        }
         }
     }
 
@@ -180,5 +212,12 @@ public static class StringTest
         var arr = new string[] { "float", "int" };
         string joined_arr = string.Join(";", arr);
         Console.WriteLine($"Joined_arr={joined_arr}");
+    }
+
+    public static void UnicodeOperationsTest()
+    {
+        Console.WriteLine(MethodBase.GetCurrentMethod().Name);
+
+        string normalized = "my_string".Normalize();
     }
 };
