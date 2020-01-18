@@ -1,25 +1,33 @@
 using System;
 using System.Linq;
+using System.Reflection;
+using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 
-public interface IMyLogger
+public interface IMyLoggerBase
+{
+    // default-implemented id property
+    int id => 0;
+}
+
+public interface IMyLogger : IMyLoggerBase
 {
     void Log(string Message);
+}
 
-    // C# 8.0: default implementations in interface: Not yet supported (use preview)
-    //void LogInt(int i)
-    //{
-    //   Log(i);
-    //}
-
-};
-
-public class MyConsoleLogger : IMyLogger
+public interface IMyOtherInterface
+{
+}
+public class MyLoggerObjectBase
+{
+}
+public class MyConsoleLogger : MyLoggerObjectBase, IMyLogger, IMyOtherInterface
 {
     void IMyLogger.Log(string Message)
     {
         Console.WriteLine(Message);
     }
-};
+}
 
 public class MyVec
 {
@@ -59,9 +67,7 @@ public class ArrayHolder
 
     void Test()
     {
-        // CS0200: Impossible to set value for readonly property or indexer
-        // (however - possible in ctor)
-        //ArrayProp = new int[] { 1, 2, 3 };
+        
     }
 
 
@@ -90,8 +96,12 @@ public class ArrayHolder
 public static class ArrayTestClass
 {
     public static void TestArray()
-    {	    
+    {
+        AddRemove();
+
         ArrayCastTest();
+
+        ArrayInitialization();
 
         TestAccessArrayByIndex();
         TestArrayAndRange();
@@ -103,11 +113,56 @@ public static class ArrayTestClass
         ArraySegmentTest();
 
         IndexOfTest();
+        FindIndexTest();
         BinarySearchTest();
 
         SimpleTestArray();
         MultiArrTest();
         ArrayByRef();
+    }
+
+    public static void ArrayInitialization()
+    {
+        // Is it possible to copy-construct array?
+        {
+            {
+                int[] source_arr = new int[] { 1, 3, 2 };
+                object ClonedArray = source_arr.Clone();
+                int[] array_copy = source_arr.ToArray();
+                //WRONG
+                //long[] long_array_copy = source_arr.ToArray<long>();
+                int[] long_array_copy = source_arr.ToArray<int>();
+            }
+
+            // ToArray: with casting to base
+            {
+                MyVec4[] source_arr = new MyVec4[] 
+                {
+                    new MyVec4(1, 2, 3, 4)
+                };
+
+                // Ok
+                MyVec[] array_copy = source_arr.ToArray<MyVec>();
+            }
+
+            // ToArray: with casting to derived: 
+            // COMPILE error!
+            {
+                MyVec[] source_arr = new MyVec4[]
+                {
+                    new MyVec4(1, 2, 3, 4)
+                };
+
+                // Compile error
+                //MyVec4[] array_copy = source_arr.ToArray<MyVec4>();
+            }
+        }
+
+        // Is it possible to initialize from IEnumerable?
+        {
+            IEnumerable<long> enumerable = new long[] { 1, 3, 2 };
+            long[] long_arr = enumerable.ToArray();
+        }
     }
     public static void SimpleTestArray()
     {
@@ -207,6 +262,37 @@ public static class ArrayTestClass
         }
     }
 
+    public static void FindIndexTest()
+    {
+        Console.WriteLine(System.Reflection.MethodBase.GetCurrentMethod().Name);
+        int[] arr = { 1, 6, 3, 1, 5, 3 };
+        // FindIndex is to be used to search by predicate
+        int SearchedIndex = Array.FindIndex(arr, i => (i % 2) == 0);
+        Contract.Assert(arr[SearchedIndex] % 2 == 0);
+        int NonExistentIndex = Array.FindIndex(arr, i => (i == 0));
+        Contract.Assert(NonExistentIndex == (arr.GetLowerBound(0) - 1));
+    }
+
+    public static void AddRemove()
+    {
+        Console.WriteLine(System.Reflection.MethodBase.GetCurrentMethod().Name);
+        int[] arr = { 1, 6, 3, 1, 5, 3 };
+        IList<int> arr_list = arr;
+        bool bCatched = false;
+        try
+        {
+            arr_list.Add(1);
+        }
+        catch (NotSupportedException Ex)
+        {
+            bCatched = true;
+        }
+        finally
+        {
+            Contract.Assert(bCatched);
+        }
+    }
+
     public static void BinarySearchTest()
     {
         Console.WriteLine(System.Reflection.MethodBase.GetCurrentMethod().Name);
@@ -227,28 +313,64 @@ public static class ArrayTestClass
         
 
         {
-            // We DO can explicitly convert array to DERIVED
+            // We DO can explicitly convert array to array of DERIVED
             MyVec[] arr = new MyVec4[] { new MyVec4(1, 2, 3, 4) };
             MyVec4[] derived_arr = (MyVec4[])arr;
             System.Diagnostics.Contracts.Contract.Assert(derived_arr.Length == arr.Length);
         }
 
+        {
+            // We DO can explicitly INTERFACE array TO derived INTERFACE array!!
+            IMyLoggerBase[] arr = new MyConsoleLogger[] { new MyConsoleLogger() };
+            IMyLogger[] derived_arr = (IMyLogger[])arr;
+            System.Diagnostics.Contracts.Contract.Assert(derived_arr.Length == arr.Length);
+        }
 
         {
-            // BUT we can NOT explicitly cast INTERFACES to BASE-classes this way!
-            IMyLogger[] arr = new IMyLogger[] { new MyConsoleLogger() };
-            bool bInvalidCastException = false;
-            try
+            // We DO can explicitly convert INTERFACE array to another INTERFACE array!!!
+            IMyLoggerBase[] arr = new MyConsoleLogger[] { new MyConsoleLogger() };
+            IMyOtherInterface[] other_interface_arr = (IMyOtherInterface[])arr;
+            System.Diagnostics.Contracts.Contract.Assert(other_interface_arr.Length == arr.Length);
+        }
+
+        // Casting INTERFACE array to DERIVED-class arrays
+        {
             {
-                MyConsoleLogger[] derived_arr = (MyConsoleLogger[])arr;
+                IMyLogger[] arr = new IMyLogger[] { new MyConsoleLogger() };
+                // Exception: Object must implement IConvertible (Convert.ChangeType)
+                //MyConsoleLogger[] derived_arr = (MyConsoleLogger[])Convert.ChangeType(arr, typeof(MyConsoleLogger[]));
             }
-            #pragma warning disable CS0168
-            catch (InvalidCastException Ex)
+
             {
-            #pragma warning restore CS0168
-                bInvalidCastException = true;
+                // This method of casting works, but ONLY casts to IEnumerable!!!
+                IMyLogger[] arr = new IMyLogger[] { new MyConsoleLogger() };
+                // Linq Cast method!
+                IEnumerable<MyConsoleLogger> derived_enumerable = arr.Cast<MyConsoleLogger>();
+                int count = 0;
+                foreach (MyConsoleLogger derived_obj in derived_enumerable)
+                {                    
+                    count++;
+                    Contract.Assert(derived_obj != null);
+                }
+                Contract.Assert(count == arr.Length);
             }
-            System.Diagnostics.Contracts.Contract.Assert(bInvalidCastException);
+
+            {
+                // BUT we can NOT explicitly cast INTERFACES to DERIVED-classes this way!
+                IMyLogger[] arr = new IMyLogger[] { new MyConsoleLogger() };
+                bool bInvalidCastException = false;
+                try
+                {
+                    MyConsoleLogger[] derived_arr = (MyConsoleLogger[])arr;
+                }
+                #pragma warning disable CS0168
+                catch (InvalidCastException Ex)
+                {
+                #pragma warning restore CS0168
+                    bInvalidCastException = true;
+                }
+                System.Diagnostics.Contracts.Contract.Assert(bInvalidCastException);
+            }
         }
 
         {
@@ -284,8 +406,12 @@ public static class ArrayTestClass
 
         {
             // WORKS with interfaces!
-            MyConsoleLogger[] arr = null;
-            IMyLogger[] base_arr = arr;
+            MyConsoleLogger[] arr = new MyConsoleLogger[] { new MyConsoleLogger() };
+            MyLoggerObjectBase[] arr_of_base = arr;
+
+            IMyLogger[] logger_arr = arr;
+            IMyLoggerBase[] base_logger_arr = arr;
+            IMyLoggerBase[] base_logger_arr_from_derived_interface = logger_arr;
         }
     }
     public static void ArrayWidenCastTest()
@@ -337,7 +463,7 @@ public static class ArrayTestClass
             System.Collections.Generic.IEnumerable<long> longEnumerable = arr.OfType<long>();
             long[] longArray = longEnumerable.ToArray();
             System.Diagnostics.Contracts.Contract.Assert(longArray.Length == 0);            
-        }
+        }        
     }
 
     public static void ArraySpanTest()

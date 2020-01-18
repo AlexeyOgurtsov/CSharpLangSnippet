@@ -74,12 +74,12 @@ public struct MyVecStruct
     public float x, y;
 
     //When using private variables, we cannot create struct instance without construction
-    // or use struct initializer syntax
-    //private float z;
+    // or use struct initializer syntax    
+    float z;
 
     // When using properties inside the struct, we cannot create struct instance without construction
     // or use struct initializer syntax
-    //public float PropX { get; set; }
+    public float PropX { get; set; }
 
     // WARNING!!! Structs DO can oveload ToString() method!
     public override string ToString() => $"{{ x={x}, y={y} }}";

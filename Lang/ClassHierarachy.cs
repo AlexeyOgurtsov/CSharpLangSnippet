@@ -32,10 +32,6 @@ public abstract class MySystemBase
         Console.WriteLine(DebugString);
     }
 
-    public readonly void PrintExtInfo()
-    {
-    }
-
     public abstract void BeginPlay();
     public MySystemBase(string Name)
     {

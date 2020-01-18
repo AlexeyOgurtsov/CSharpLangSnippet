@@ -80,7 +80,7 @@ public class DelegateTestsHandler : IDelegateTestsHandler
     {
         // WARNING 1!!! this access methods add/remove: not necessary in most cases
         // WARNING 2!!! When we defined add/remove in event, we can NOT longer use the public event itself,
-        // only internal, because the public event now only allows add/remove!
+        // only private, because the public event now only allows add/remove!
         add => _MyClickEvent += value;
         remove => _MyClickEvent -= value;
     }
@@ -594,33 +594,33 @@ public class DelegateTests
 	{
 		Console.WriteLine(System.Reflection.MethodBase.GetCurrentMethod().Name);
 
-        // Forbidden calls on the client site of the event (CS0070)
-        // WARNING!! ON THE CLIENT SIDE we ONLY can call += and -= on events!!!
-        {
-            //HandlerObject.MyClickEvent = null;
-            //HandlerObject.MyClickEvent = OnMyClickHandler;
-            //HandlerObject.MyClickEvent(this, new MyClickEventArgs());
-            //bool bEventIsNull = HandlerObject.MyClickEvent == null;
-        }
+		// Forbidden calls on the client site of the event (CS0070)
+		// WARNING!! ON THE CLIENT SIDE we ONLY can call += and -= on events!!!
+		{
+		    //HandlerObject.MyClickEvent = null;
+		    //HandlerObject.MyClickEvent = OnMyClickHandler;
+		    //HandlerObject.MyClickEvent(this, new MyClickEventArgs());
+		    //bool bEventIsNull = HandlerObject.MyClickEvent == null;
+		}
 
-        // Try to subscribe and unsubscribe from event
-        WriteSeps();
-        {
-            HandlerObject.MyClickEvent += OnMyClickHandler;
-            HandlerObject.MyClickEvent += OnMyClickHandler_2;
-            HandlerObject.MyClickEvent += OnMyClickHandler;
-            HandlerObject.InvokeClickEvent();
-            HandlerObject.MyClickEvent -= OnMyClickHandler;
-            HandlerObject.MyClickEvent -= OnMyClickHandler_2;
-            HandlerObject.MyClickEvent -= OnMyClickHandler;
-            // Here event is null, but we still can do the unsubscribe call
-            {
-                // WRONG: ever check call is wrong for events!!!
-                //Contract.Assert(HandlerObject.MyClickEvent == null);
-                HandlerObject.MyClickEvent -= OnMyClickHandler;
-            }
-            HandlerObject.InvokeClickEvent();
-        }
+		// Try to subscribe and unsubscribe from event
+		WriteSeps();
+		{
+		    HandlerObject.MyClickEvent += OnMyClickHandler;
+		    HandlerObject.MyClickEvent += OnMyClickHandler_2;
+		    HandlerObject.MyClickEvent += OnMyClickHandler;
+		    HandlerObject.InvokeClickEvent();
+		    HandlerObject.MyClickEvent -= OnMyClickHandler;
+		    HandlerObject.MyClickEvent -= OnMyClickHandler_2;
+		    HandlerObject.MyClickEvent -= OnMyClickHandler;
+		    // Here event is null, but we still can do the unsubscribe call
+		    {
+			// WRONG: ever check call is wrong for events!!!
+			//Contract.Assert(HandlerObject.MyClickEvent == null);
+			HandlerObject.MyClickEvent -= OnMyClickHandler;
+		    }
+		    HandlerObject.InvokeClickEvent();
+		}
 	}
 
 	public static void OnMyClickHandler(object Sender, MyClickEventArgs e)
